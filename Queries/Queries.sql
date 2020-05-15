@@ -264,3 +264,4 @@ ON (e.emp_no = tl.emp_no)
 WHERE (e.birth_date BETWEEN '1965-01-01' AND '1965-12-31')
     AND (tl.to_date = '9999-01-01')
 ORDER BY e.emp_no;
+
