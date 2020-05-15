@@ -180,8 +180,87 @@ ON (de.dept_no = d.dept_no);
 
 -- Create new table for retiring employees in sales
 SELECT emp_no, first_name, last_name, dept_name
-INTO sal_dev_info
+INTO sales_emp
 FROM dept_info
-WHERE dept_name = 'Sales'
-OR dept_name = 'Development';
+WHERE dept_name = 'Sales';
 
+-- Create new table for more retiring employees
+SELECT emp_no, first_name, last_name, dept_name
+INTO sal_dev_emp
+FROM dept_info
+WHERE dept_name in ('Sales', 'Development');
+
+-- List of retirees by title
+SELECT ce.emp_no,
+    ce.first_name,
+    ce.last_name,
+    tl.title,
+    tl.from_date,
+    s.salary
+INTO retiree_titles
+FROM current_emp AS ce
+INNER JOIN titles AS tl
+ON (ce.emp_no = tl.emp_no)
+INNER JOIN salaries AS s
+ON (ce.emp_no = s.emp_no);
+
+-- Partition the data to show only most recent title per employee
+SELECT emp_no,
+ first_name,
+ last_name,
+ title,
+ from_date,
+ salary
+INTO unique_titles
+FROM
+ (SELECT rt.emp_no,
+ rt.first_name,
+ rt.last_name,
+ rt.title,
+ rt.from_date,
+ rt.salary, ROW_NUMBER() OVER
+ (PARTITION BY (rt.emp_no)
+ ORDER BY tl.to_date DESC) rn
+ FROM retiree_titles AS rt
+ INNER JOIN titles AS tl
+ ON (rt.emp_no = tl.emp_no)
+ ) tmp WHERE rn = 1
+ORDER BY emp_no;
+
+-- Count of retiring employees per title
+SELECT title, COUNT(emp_no) AS emp_count 
+INTO retiree_titles_count
+FROM unique_titles
+GROUP BY title
+ORDER BY emp_count DESC;
+
+-- List of retirees by title (secondary method)
+SELECT ce.emp_no,
+    ce.first_name,
+    ce.last_name,
+    tl.title,
+    tl.from_date,
+    s.salary
+INTO retiree_titles
+FROM current_emp AS ce
+INNER JOIN titles AS tl
+ON (ce.emp_no = tl.emp_no)
+INNER JOIN salaries AS s
+ON (ce.emp_no = s.emp_no)
+WHERE (tl.to_date = '9999-01-01')
+ORDER BY ce.emp_no;
+
+-- List of employees eligibile for membership
+SELECT e.emp_no,
+    e.first_name,
+    e.last_name,
+    tl.title,
+    tl.from_date,
+    tl.to_date
+INTO elig_memb
+FROM employees AS e
+INNER JOIN titles AS tl
+ON (e.emp_no = tl.emp_no)
+WHERE (e.birth_date BETWEEN '1965-01-01' AND '1965-12-31')
+    AND (tl.to_date = '9999-01-01')
+ORDER BY e.emp_no;
